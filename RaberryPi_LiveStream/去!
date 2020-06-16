@@ -1,0 +1,59 @@
+import cv2 as cv
+import subprocess as sp
+
+BGM = "/home/pi/scrpt/Blive/StarBucks_BGN.mp3"
+rtmpUrl = "rtmp://bvc.live-send.acg.tv/live-bvc//?streamname=live_393056819_39750720&key=528d4cd0458241ea8976084670a6493c"
+camera_path = "/dev/video0"
+cap = cv.VideoCapture(camera_path)
+
+# Get video information
+fps = 32#int(cap.get(cv.CAP_PROP_FPS))
+ret, frame = cap.read()
+h, w, c = frame.shape
+
+# Add background
+BG = cv.imread( "/home/pi/scrpt/Blive/bg-143.jpg")
+height, width, c = BG.shape
+R = (height/h)/1.1
+BG = cv.resize(BG, (int(width/R),int(height/R)), interpolation = cv.INTER_AREA)
+height, width, c = BG.shape
+
+
+# ffmpeg command
+
+
+command = ['ffmpeg',
+        #'-re', '-stream_loop', '-1', 
+        #'-i', '/home/pi/scrpt/Blive/StarBucks_BGN.mp3',
+        '-y',
+        '-f', 'rawvideo',
+        '-vcodec','rawvideo',
+        '-pix_fmt', 'bgr24',
+        '-s', "{}x{}".format(width, height),
+        '-r', str(fps),
+        '-i', '-',
+        '-c:v', 'libx264',
+        '-pix_fmt', 'yuv420p',
+        '-preset', 'ultrafast',
+        '-f', 'flv',
+        rtmpUrl]
+
+# 管道配置
+p = sp.Popen(command, stdin=sp.PIPE)
+
+# read webcamera
+while(cap.isOpened()):
+    ret, frame = cap.read()
+    if not ret:
+        print("Opening camera is failed")
+        break
+
+    # process frame
+    # your code
+    # process frame
+
+    # write to pipe
+    BG[0:h,0:w] = frame
+    p.stdin.write(BG.tostring())
+
+
